@@ -66,7 +66,7 @@ def process_follower_msgs():
             # ID and which port to connect for audit requests
             message = {"ID": new_id, "audit_port": audit_port}
             message = pickle.dumps(message)
-            socket.send_string(message)
+            socket.send(message)
             
             # Add client to dict and continue
             clients[str(new_id)] = False
@@ -130,7 +130,7 @@ def run_follower(connect_port):
     # Attempt to register with the leader
     if(debug): print("Sending connect request...")
     connect_message = {"topic":"connect"}
-    socket.send_string(pickle.dumps(connect_message))
+    socket.send(pickle.dumps(connect_message))
 
     #  Get the reply with ID and audit port
     client_info = socket.recv()
@@ -160,7 +160,7 @@ def run_follower(connect_port):
 
             # Tell leader camflow has started
             audit_start = {"topic":"audit","ID":client_info["ID"], "current_state": True}
-            socket.send_string(pickle.dumps(audit_start))
+            socket.send(pickle.dumps(audit_start))
 
             # MUST receive ack for this socket pattern
             ack = socket.recv()
@@ -180,7 +180,7 @@ def run_follower(connect_port):
             #    socket.send
             # Prepare and send message for leader indicating state change
             audit_stop = {"topic":"audit","ID":client_info["ID"], "current_state": False}
-            socket.send_string(pickle.dumps(audit_stop))
+            socket.send(pickle.dumps(audit_stop))
             
             # MUST receive ack for this socket pattern
             ack = socket.recv()
