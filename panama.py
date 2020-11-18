@@ -75,7 +75,7 @@ def process_follower_msgs():
         elif (message["topic"] == "audit"): # Follower changing audit state
             clients[message["ID"]] = message["current_state"]
             if("data" in message.keys() and message["data"] is not None):
-                with open("~/" + str(message["ID"]) + "audit.log", "w+") as new_log:
+                with open("~/audit" + str(message["ID"]) + ".log", "a") as new_log:
                     new_log.write(zlib.decompress(message["data"]))
             socket.send_string("ACK")
         else:
@@ -178,10 +178,11 @@ def run_follower(connect_port):
             log_data = get_audit_log()
             if(log_data is not None):
                 audit_msg ={"topic":"audit", "ID":client_info["ID"],\
-                        "current_state": False, "data":zlib.compress(log_data)}
-                audit_msg = json.dumps(audit_msg)
+                        "current_state": False, "data":zlib.compress(log_data.encode("utf-8"))}
+                audit_msg = pickle.dumps(audit_msg)
                 socket.send(audit_msg)
             else:
+                print("No log file")
                 # Prepare and send message for leader indicating state change
                 audit_stop = {"topic":"audit","ID":client_info["ID"],\
                         "current_state": False, "data": None}
