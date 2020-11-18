@@ -4,6 +4,9 @@ import sys
 import json
 import threading 
 import argparse
+import subprocess
+import cPikle as pickle
+import zlib
 
 # Set to true for verbose execution 
 debug = True
@@ -25,6 +28,15 @@ is_leader = False
 # The IP address to connect to
 ip_address = "127.0.0.1"
 
+def get_audit_log():
+    log_data = None 
+    try:
+        with open("/tmp/audit.log") as audit_log:
+            log_data = audit_log.read()
+    except:
+        log_data = None
+    return(log_data)
+
 # This function sits and waits on the connect port
 # any message that comes to the leader is processed here
 # It is run in a new thread 
@@ -41,7 +53,7 @@ def process_follower_msgs():
     # Do this until program is closed
     while True:
         #  Wait for next request from client
-        message = json.loads(socket.recv())
+        message = pickle.loads(socket.recv())
         if(debug): print("Received request: ", message)
 
         # Messages will have a topic key indicating what it is for
@@ -53,7 +65,7 @@ def process_follower_msgs():
             # Construct message to send back, telling the follower its
             # ID and which port to connect for audit requests
             message = {"ID": new_id, "audit_port": audit_port}
-            message = json.dumps(message)
+            message = pickle.dumps(message)
             socket.send_string(message)
             
             # Add client to dict and continue
@@ -118,11 +130,11 @@ def run_follower(connect_port):
     # Attempt to register with the leader
     if(debug): print("Sending connect request...")
     connect_message = {"topic":"connect"}
-    socket.send_string(json.dumps(connect_message))
+    socket.send_string(pickle.dumps(connect_message))
 
     #  Get the reply with ID and audit port
     client_info = socket.recv()
-    client_info = json.loads(client_info)
+    client_info = pickle.loads(client_info)
     if(debug): print("Received ID [", client_info["ID"], "]")
 
     # Connect to the audit port received from leader
@@ -143,23 +155,34 @@ def run_follower(connect_port):
             if(debug): print("starting audit")
 
             #TODO start CamFlow
+            cf =subprocess.run(["camflow", "-e", "true"])
+            cf =subprocess.run(["camflow", "-a", "true"])
 
             # Tell leader camflow has started
             audit_start = {"topic":"audit","ID":client_info["ID"], "current_state": True}
-            socket.send_string(json.dumps(audit_start))
+            socket.send_string(pickle.dumps(audit_start))
 
             # MUST receive ack for this socket pattern
             ack = socket.recv()
             if(debug): print(ack)
         elif (audit_message == b"END"):
             if(debug):print("stopping audit")
+            
             # TODO stop CamFlow
+            cf =subprocess.run(["camflow", "-e", "false"])
+            cf =subprocess.run(["camflow", "-a", "false"])
             if(debug):print("audit stopped")
-
+            #log_data = get_audit_log()
+            #if(log_data is not None):
+            #    audit_msg ={"topic":"data", "ID":client_info["ID"], "data":log_data}
+            #    audit_msg = json.dumps(audit_msg)
+            #    audit_msg = zlip.compress(audit_msg)
+            #    socket.send
             # Prepare and send message for leader indicating state change
             audit_stop = {"topic":"audit","ID":client_info["ID"], "current_state": False}
-            socket.send_string(json.dumps(audit_stop))\
-             # MUST receive ack for this socket pattern
+            socket.send_string(pickle.dumps(audit_stop))
+            
+            # MUST receive ack for this socket pattern
             ack = socket.recv()
             if(debug):print(ack)
 
