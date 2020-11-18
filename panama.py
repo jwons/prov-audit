@@ -3,6 +3,7 @@ import time
 import sys
 import json
 import threading 
+import argparse
 
 # Set to true for verbose execution 
 debug = True
@@ -20,6 +21,9 @@ audit_port = "5557"
 
 # Flag for which version of panama to run
 is_leader = False
+
+# The IP address to connect to
+ip_address = "127.0.0.1"
 
 # This function sits and waits on the connect port
 # any message that comes to the leader is processed here
@@ -109,7 +113,7 @@ def run_follower(connect_port):
     # Connect to leader socket
     if(debug): print("Connecting to leader...")
     socket = context.socket(zmq.REQ)
-    socket.connect("tcp://localhost:%s" % connect_port)
+    socket.connect("tcp://" + ip_address + ":%s" % connect_port)
 
     # Attempt to register with the leader
     if(debug): print("Sending connect request...")
@@ -123,7 +127,7 @@ def run_follower(connect_port):
 
     # Connect to the audit port received from leader
     audit_socket = context.socket(zmq.SUB)
-    audit_socket.connect('tcp://localhost:%s' % client_info["audit_port"])
+    audit_socket.connect("tcp://" + ip_address + ":%s" % client_info["audit_port"])
     audit_socket.setsockopt(zmq.SUBSCRIBE, b'')
 
     # Until the program ends wait for messages from leader
@@ -164,10 +168,16 @@ def run_follower(connect_port):
 if __name__ == "__main__":
     # This port is how the follower / leader talk
     connect_port = "5556"
+    parser = argparse.ArgumentParser()
+   
+    parser.add_argument('-l', '--leader', action='store_true')
+    parser.add_argument('-a', '--address')
+    args = parser.parse_args()
 
-    if(len(sys.argv) > 1):
-        if(sys.argv[1] == "leader"):
-            is_leader = True
+    if args.leader:
+        is_leader = True
+    if args.address:
+        ip_address = args.address
     
     while True:
         if(is_leader):
