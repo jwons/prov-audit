@@ -5,7 +5,7 @@ import json
 import threading 
 import argparse
 import subprocess
-import cPikle as pickle
+import pickle
 import zlib
 
 # Set to true for verbose execution 
