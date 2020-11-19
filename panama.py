@@ -76,7 +76,7 @@ def process_follower_msgs():
             clients[message["ID"]] = message["current_state"]
             if("data" in message.keys() and message["data"] is not None):
                 with open("audits/audit" + str(message["ID"]) + ".log", "w+") as new_log:
-                    new_log.write(zlib.decompress(message["data"].decode("utf-8")))
+                    new_log.write(zlib.decompress(message["data"]).decode("utf-8"))
             socket.send_string("ACK")
         else:
             pass
