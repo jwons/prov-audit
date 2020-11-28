@@ -23,7 +23,7 @@ clients = {}
 audit_port = "5557"
 
 # Flag for which version of panama to run
-is_leader = False
+is_leader = True
 
 # The IP address to connect to
 ip_address = "127.0.0.1"
@@ -199,20 +199,22 @@ if __name__ == "__main__":
     connect_port = "5556"
     parser = argparse.ArgumentParser()
    
-    parser.add_argument('-l', '--leader', action='store_true')
-    parser.add_argument('-a', '--address')
+    parser.add_argument('-c', '--config', required = True)
     args = parser.parse_args()
 
-    if args.leader:
-        is_leader = True
-    if args.address:
-        ip_address = args.address
-    
+    config_filepath = args.config
+    with open(config_filepath) as config_file:
+        config_info = json.loads(config_file.read())
+    if("leader_ip" in config_info.keys()):
+        ip_address = config_info["leader_ip"]
+        is_leader = False
+
     while True:
         if(is_leader):
             run_leader(connect_port)
         else:
             run_follower(connect_port)
+
     
     
 
