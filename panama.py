@@ -37,6 +37,15 @@ def get_audit_log():
         log_data = None
     return(log_data)
 
+def submit_prov(counter):
+    for prov_count in range(counter):
+        cmd = "sudo /home/vagrant/SPADE/bin/spade control | add reporter"\
+                + " Camflow inputLog=/home/vagrant/audits/audit"\
+                + str(prov_count) + ".log"
+        ps = subprocess.Popen(cmd,shell=True,stdout=subprocess.PIPE,stderr=subprocess.STDOUT)
+        output = ps.communicate()[0]
+
+
 # This function sits and waits on the connect port
 # any message that comes to the leader is processed here
 # It is run in a new thread 
@@ -45,6 +54,10 @@ def process_follower_msgs():
     # This counter is how followers get unique IDs
     # each follower gets current val than it is incremented
     follower_counter = 0
+
+    # Track followers who completed/started audits
+    audit_counter = 0
+    start_counter = 0
 
     # Binds to REP socket
     socket = context.socket(zmq.REP)
@@ -77,6 +90,15 @@ def process_follower_msgs():
             if("data" in message.keys() and message["data"] is not None):
                 with open("audits/audit" + str(message["ID"]) + ".log", "w+") as new_log:
                     new_log.write(zlib.decompress(message["data"]).decode("utf-8"))
+                audit_counter += 1
+                if (audit_counter == follower_counter):
+                    submit_prov(audit_counter)
+                    audit_counter = 0
+            if (message["current_state"] == True):
+                start_counter += 1
+                if (start_counter == follower_counter):
+                    print("All Auditing!")
+                    start_counter = 0
             socket.send_string("ACK")
         else:
             pass
@@ -171,7 +193,7 @@ def run_follower(connect_port):
         elif (audit_message == b"END"):
             if(debug):print("stopping audit")
             
-            # TODO stop CamFlow
+            # stop CamFlow
             cf =subprocess.run(["camflow", "-e", "false"])
             cf =subprocess.run(["camflow", "-a", "false"])
             if(debug):print("audit stopped")
@@ -190,9 +212,7 @@ def run_follower(connect_port):
             
             # MUST receive ack for this socket pattern
             ack = socket.recv()
-            if(debug):print(ack)
-
-            # TODO send audit log 
+            if(debug):print(ack) 
 
 if __name__ == "__main__":
     # This port is how the follower / leader talk
